@@ -14,7 +14,7 @@ This is the **Backend** part of the project, built with **Laravel 12**.
 
 ## Prerequisites
 
-- **PHP 8.1 or above**
+- **PHP 8.2 or above**
 - **Composer** - Dependency management tool for PHP
 - **MySQL** - Database server
 
