@@ -31,4 +31,10 @@ class Lead extends Model
     // {
     //     return $this->belongsTo(\App\Models\LeadStage::class, 'lead_stage_id');
     // }
+
+    public function products()
+    {
+        return $this->belongsToMany(Product::class, 'lead_products')
+                    ->withTimestamps();
+    }
 }

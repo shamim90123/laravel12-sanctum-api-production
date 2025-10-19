@@ -36,6 +36,10 @@ Route::prefix('v1')->group(function () {
         Route::delete('contacts/{contact}', [ContactController::class, 'destroy']);
         Route::post('contacts/{contact}/primary', [ContactController::class, 'setPrimary']);
 
+          Route::get('/leads/{lead}/products', [\App\Http\Controllers\Api\LeadController::class, 'products']);
+    Route::put('/leads/{lead}/products', [\App\Http\Controllers\Api\LeadController::class, 'assignProducts']);
+    Route::post('/leads/{lead}/products', [\App\Http\Controllers\Api\LeadController::class, 'assignProducts']); // allow POST too
+
         Route::apiResource('users', UserController::class);
         Route::get('leads/{id}', [LeadController::class, 'show']);  // Fetch single lead by ID
 

@@ -10,4 +10,11 @@ class Product extends Model
     use HasFactory;
 
     protected $fillable = ['name', 'status'];
+
+
+    public function leads()
+    {
+        return $this->belongsToMany(Lead::class, 'lead_products')
+                    ->withTimestamps();
+    }
 }

@@ -5,6 +5,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use App\Models\LeadComment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\Response;
+
 
 class LeadController extends Controller
 {
@@ -138,5 +141,52 @@ class LeadController extends Controller
         $comment->delete();
 
         return response()->json(['message' => 'Comment deleted']);
+    }
+
+
+    /**
+     * GET: List products currently linked to the lead
+     */
+    public function products(Lead $lead)
+    {
+        // Return minimal fields needed by your UI (id, name, code/sku, etc.)
+        $items = $lead->products()
+            ->select('products.id', 'products.name')
+            ->orderBy('products.name')
+            ->get();
+
+        return response()->json([
+            'data' => $items,
+        ]);
+    }
+
+     /**
+     * PUT/POST: Assign products to a lead (replaces existing set).
+     * Body: { product_ids: [1,2,3] }
+     */
+    public function assignProducts(Request $request, Lead $lead)
+    {
+        $validated = $request->validate([
+            'product_ids'   => ['required', 'array'],
+            'product_ids.*' => ['integer', 'exists:products,id'],
+        ]);
+
+        $ids = array_values(array_unique($validated['product_ids']));
+
+        DB::transaction(function () use ($lead, $ids) {
+            // Replace the whole set; use syncWithoutDetaching($ids) if you want additive behavior
+            $lead->products()->sync($ids);
+        });
+
+        // Return updated list for convenience
+        $items = $lead->products()
+            ->select('products.id', 'products.name',)
+            ->orderBy('products.name')
+            ->get();
+
+        return response()->json([
+            'message' => 'Products assigned successfully.',
+            'data'    => $items,
+        ], Response::HTTP_OK);
     }
 }
