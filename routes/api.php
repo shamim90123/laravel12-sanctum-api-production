@@ -69,6 +69,8 @@ Route::prefix('v1')->group(function () {
         Route::patch('/lead_stages/{id}/status', [LeadStageController::class, 'toggleStatus']); // Toggle product status
         Route::delete('/lead_stages/{id}', [LeadStageController::class, 'destroy']);
 
+        Route::post('/leads/bulk-importer', [LeadController::class, 'bulkImporter']);
+
     });
 
 });
