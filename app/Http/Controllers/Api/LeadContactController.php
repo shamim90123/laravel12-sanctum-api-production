@@ -10,6 +10,40 @@ use Illuminate\Support\Facades\DB;
 
 class LeadContactController extends Controller
 {
+    public function index(Lead $lead, Request $request)
+    {
+        // Optional: support ?q=search and pagination
+        $query = $lead->contacts()->orderByDesc('is_primary')->orderByDesc('id');
+
+        if ($search = $request->get('q')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%")
+                ->orWhere('phone', 'like', "%{$search}%")
+                ->orWhere('job_title', 'like', "%{$search}%")
+                ->orWhere('department', 'like', "%{$search}%");
+            });
+        }
+
+        $perPage = (int) $request->get('per_page', 10);
+
+        $contacts = $query->paginate($perPage)->through(function ($contact) {
+            return [
+                'id'             => $contact->id,
+                'name'           => $contact->name,
+                'email'          => $contact->email,
+                'phone'          => $contact->phone,
+                'job_title'      => $contact->job_title,
+                'department'     => $contact->department,
+                'primary_status' => (bool) $contact->is_primary,
+                'created_at'     => $contact->created_at,
+            ];
+        });
+
+        return response()->json($contacts);
+    }
+
+
     public function store(Lead $lead, Request $request)
     {
         $payload = $request->all();

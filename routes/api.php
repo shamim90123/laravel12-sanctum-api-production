@@ -49,6 +49,11 @@ Route::prefix('v1')->group(function () {
         Route::delete('contacts/{contact}', [LeadContactController::class, 'destroy']);
         Route::post('contacts/{contact}/primary', [LeadContactController::class, 'setPrimary']);
 
+        Route::get('leads/{lead}/contacts', [LeadContactController::class, 'index']);
+
+Route::get('leads/{lead}/comments', [LeadController::class, 'leadComments']);
+Route::post('leads/{lead}/comments', [LeadController::class, 'store']);
+Route::delete('leads/{lead}/comments/{comment}', [LeadController::class, 'destroy']);
 
         // lead Comments routes
         Route::get('leads/{lead}/comments',   [LeadController::class, 'comments']);       // list (paginated)

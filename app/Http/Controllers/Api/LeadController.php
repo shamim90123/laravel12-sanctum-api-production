@@ -257,4 +257,11 @@ class LeadController extends Controller
         ], 200);
     }
 
+
+    public function leadComments(\App\Models\Lead $lead)
+{
+    $comments = $lead->comments()->with('user:id,name')->latest()->paginate(10);
+    return response()->json($comments);
+}
+
 }
