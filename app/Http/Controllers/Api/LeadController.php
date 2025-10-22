@@ -71,7 +71,8 @@ class LeadController extends Controller
                 'destination:id,name,flag,iso_3166_2',
                 'contacts',
                 'comments' => function($q) { $q->latest('created_at'); },
-                'comments.user:id,name' // include commenter name
+                'comments.user:id,name', // include commenter name
+                'accountManager:id,name' // include account manager name
             ])->find($id);
 
         if (!$lead) {
