@@ -211,4 +211,29 @@ class LeadController extends Controller
             'data'    => $countries,
         ], Response::HTTP_OK);
     }
+
+    public function assignAccountManager(Request $request, $leadId)
+    {
+        // ✅ Validate input
+        $validated = $request->validate([
+            'user_ids.user_id' => ['nullable', 'integer', 'exists:users,id'],
+        ]);
+
+        // ✅ Find lead or fail if not found
+        $lead = Lead::findOrFail($leadId);
+
+        // ✅ Extract user_id from nested payload
+        $userId = $validated['user_ids']['user_id'] ?? null;
+
+        // ✅ Update lead with assigned account manager
+        $lead->update([
+            'account_manager_id' => $userId,
+        ]);
+
+        return response()->json([
+            'message' => 'Account Manager updated successfully',
+            'lead' => $lead->fresh(['accountManager']), // include relationship if you have one
+        ], 200);
+    }
+
 }
