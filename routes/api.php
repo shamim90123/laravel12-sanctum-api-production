@@ -32,6 +32,7 @@ Route::prefix('v1')->group(function () {
 
         // User routes
         Route::apiResource('users', UserController::class);
+        Route::get('user-list', [UserController::class, 'userList']);  // Fetch single lead by ID
 
         Route::get('/stats/overview', [DashboardController::class, 'overview']);
 
