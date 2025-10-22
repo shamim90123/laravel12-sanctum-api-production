@@ -13,22 +13,42 @@ class LeadController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Lead::with('destination:id,flag,name,iso_3166_2');
+        $query = Lead::query()
+            ->with([
+                'destination:id,flag,name,iso_3166_2',
+                'accountManager:id,name', // optional, used by UI
+            ])
+            ->withCount([
+                'contacts',               // -> contacts_count
+                'comments as notes_count' // alias for UI "notes"
+            ]);
 
         if ($search = $request->get('q')) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('lead_name', 'like', "%{$search}%")
-                  ->orWhere('city', 'like', "%{$search}%");
+                ->orWhere('city', 'like', "%{$search}%");
             });
         }
 
-        $sortBy = $request->get('sort_by', 'lead_name');
-        $direction = $request->get('direction', 'asc');
+        // Safe sorting (allow-list)
+        $sortBy    = $request->get('sort_by', 'lead_name');
+        $direction = strtolower($request->get('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
 
-        $leads = $query->orderBy($sortBy, $direction)->paginate(10);
+        $sortable = ['lead_name', 'city', 'created_at', 'contacts_count', 'notes_count'];
+        if (! in_array($sortBy, $sortable, true)) {
+            $sortBy = 'lead_name';
+        }
+
+        $perPage = (int) $request->get('per_page', 10);
+
+        $leads = $query
+            ->orderBy($sortBy, $direction)
+            ->paginate($perPage)
+            ->appends($request->query());
 
         return response()->json($leads);
     }
+
 
     public function store(Request $request)
     {
