@@ -16,14 +16,26 @@ class LeadContactController extends Controller
         $items = isset($payload[0]) ? $payload : [$payload];
 
         $data = validator($items, [
-            '*.id'         => ['nullable', 'integer', 'exists:lead_contacts,id'],
-            '*.name'       => ['required', 'string', 'max:255'],
-            '*.email'      => ['nullable', 'email', 'max:255'],
-            '*.phone'      => ['nullable', 'string', 'max:255'],
-            '*.job_title'  => ['nullable', 'string', 'max:255'],
-            '*.department' => ['nullable', 'string', 'max:255'],
-            '*.is_primary' => ['nullable', 'boolean'],
+            '*.id'              => ['nullable', 'integer', 'exists:lead_contacts,id'],
+            '*.first_name'      => ['required', 'string', 'max:255'],
+            '*.last_name'       => ['required', 'string', 'max:255'],
+            '*.email'           => ['nullable', 'email', 'max:255'],
+            '*.phone'           => ['nullable', 'string', 'max:255'],
+            '*.job_title'       => ['nullable', 'string', 'max:255'],
+            '*.department'      => ['nullable', 'string', 'max:255'],
+            '*.is_primary'      => ['nullable', 'boolean'],
         ])->validate();
+
+        // 🔁 Normalize: build `name` from first/last, remove split fields
+        $data = array_map(static function (array $item) {
+            $first = trim((string) ($item['first_name'] ?? ''));
+            $last  = trim((string) ($item['last_name'] ?? ''));
+            $full  = trim(preg_replace('/\s+/u', ' ', $first.' '.$last));
+
+            $item['name'] = $full;
+
+            return $item;
+        }, $data);
 
         $out = [];
 
