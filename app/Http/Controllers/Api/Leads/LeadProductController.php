@@ -55,7 +55,7 @@ class LeadProductController extends Controller
         $data = $request->validate([
             'items'                      => ['required', 'array', 'min:1'],
             'items.*.product_id'         => ['required', 'integer', 'exists:products,id'],
-            'items.*.sales_stage_id'     => ['nullable', 'integer', 'exists:lead_stages,id'],
+            'items.*.sales_stage_id'     => ['nullable', 'integer', 'exists:sale_stages,id'],
             'items.*.account_manager_id' => ['nullable', 'integer', 'exists:users,id'],
         ]);
 
@@ -78,7 +78,7 @@ class LeadProductController extends Controller
     // public function updateSingle(Request $request, Lead $lead, Product $product): JsonResponse
     // {
     //     $attrs = $request->validate([
-    //         'sales_stage_id'     => ['nullable', 'integer', 'exists:lead_stages,id'],
+    //         'sales_stage_id'     => ['nullable', 'integer', 'exists:sale_stages,id'],
     //         'account_manager_id' => ['nullable', 'integer', 'exists:users,id'],
     //     ]);
 
