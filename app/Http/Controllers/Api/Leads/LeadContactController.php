@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Api\Leads;
 
 use App\Http\Controllers\Controller;
 use App\Models\Lead;
@@ -43,8 +43,8 @@ class LeadContactController extends Controller
         return response()->json($contacts);
     }
 
-
-    public function store(Lead $lead, Request $request)
+    // store and update
+    public function store_update(Lead $lead, Request $request)
     {
         $payload = $request->all();
         $items = isset($payload[0]) ? $payload : [$payload];
