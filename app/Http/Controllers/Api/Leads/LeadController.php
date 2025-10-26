@@ -14,6 +14,7 @@ use App\Models\LeadContact;
 use App\Models\Product;
 use App\Models\SaleStage;
 use App\Models\LeadProduct;
+use Carbon\Carbon;
 
 class LeadController extends Controller
 {
@@ -112,15 +113,18 @@ class LeadController extends Controller
     public function bulkImporter(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'leads'                           => ['required', 'array'],
-            'leads.*.Name'                    => ['required', 'string', 'max:255'],
-            'leads.*.City'                    => ['nullable', 'string', 'max:255'],
-            'leads.*.Destination'             => ['nullable'],
-            'leads.*.First Name'              => ['nullable', 'string', 'max:255'],
-            'leads.*.Last Name'               => ['nullable', 'string', 'max:255'],
-            'leads.*.Email'                   => ['nullable', 'string', 'email', 'max:255'],
-            'leads.*.Job Title'               => ['nullable', 'string', 'max:255'],
-            'leads.*.Phone'                   => ['nullable', 'string', 'max:50'],
+            'leads'                                 => ['required', 'array'],
+            'leads.*.Name'                          => ['required', 'string', 'max:255'],
+            'leads.*.City'                          => ['nullable', 'string', 'max:255'],
+            'leads.*.Destination'                   => ['nullable'],
+            'leads.*.First Name'                    => ['nullable', 'string', 'max:255'],
+            'leads.*.Last Name'                     => ['nullable', 'string', 'max:255'],
+            'leads.*.Email'                         => ['nullable', 'string', 'email', 'max:255'],
+            'leads.*.Job Title'                     => ['nullable', 'string', 'max:255'],
+            'leads.*.Phone'                         => ['nullable', 'string', 'max:50'],
+            'leads.*.Item ID (auto generated)'      => ['nullable'],
+            'leads.*.Link'                          => ['nullable'],             // <- fixed
+            'leads.*.Comments'                      => ['nullable', 'string'],   // <- NEW
 
             // Each product column contains a Stage name (string). If empty -> we record as "skipped".
             'leads.*.SAMS Manage'             => ['nullable', 'string', 'max:255'],
@@ -134,12 +138,15 @@ class LeadController extends Controller
             'SAMS Pay'                    => 'SAMS Pay',
             'SAMS Pay Client Management'  => 'SAMS Pay Client Management',
             'SAMS Perform'                => 'SAMS Perform',
+            'Booked Demo'                 => 'Booked Demo',
         ];
+
 
         $created    = 0;
         $updated    = 0;
         $contactsUp = 0;
         $lpUpserts  = 0;
+        $commentsCreated = 0;
 
         // Collect diagnostics of not-inserted / skipped items
         $skips = [
@@ -149,10 +156,11 @@ class LeadController extends Controller
             'lead_products_conflicts' => [],              // [ {row_index, lead_id, product, reason} ]
             'leads_existing' => [],                       // [ {row_index, lead_id, lead_name} ]
             'row_errors' => [],                           // [ {row_index, reason, row_payload} ]
+            'comments_skipped' => [],  // [{row_index, lead_id, reason}]
         ];
 
         DB::transaction(function () use (
-            &$created, &$updated, &$contactsUp, &$lpUpserts,
+            &$created, &$updated, &$contactsUp, &$lpUpserts, $commentsCreated,
             $validated, $productColumns, &$skips
         ) {
             foreach ($validated['leads'] as $idx => $row) {
@@ -210,6 +218,8 @@ class LeadController extends Controller
                     $email     = self::n(\Illuminate\Support\Arr::get($row, 'Email'));
                     $jobTitle  = self::n(\Illuminate\Support\Arr::get($row, 'Job Title'));
                     $phone     = self::n(\Illuminate\Support\Arr::get($row, 'Phone'));
+                    $itemId    = self::n(\Illuminate\Support\Arr::get($row, 'Item ID (auto generated)'));
+                    $link      = self::n(\Illuminate\Support\Arr::get($row, 'Link'));
                     $fullName  = trim(implode(' ', array_filter([$first, $last])));
 
                     $contactQuery = \App\Models\LeadContact::query()->where('lead_id', $lead->id);
@@ -240,6 +250,8 @@ class LeadController extends Controller
                         $contact->email      = $email;
                         $contact->phone      = $phone;
                         $contact->job_title  = $jobTitle;
+                        $contact->item_id    = $itemId;
+                        $contact->link       = $link;
                         $contact->save();
                         $contactsUp++;
                     } else {
@@ -251,6 +263,8 @@ class LeadController extends Controller
                             'email'      => $email,
                             'phone'      => $phone,
                             'job_title'  => $jobTitle,
+                            'item_id'    => $itemId,
+                            'link'       => $link,
                         ] as $field => $val) {
                             if ($val && $val !== $contact->{$field}) {
                                 $contact->{$field} = $val;
@@ -262,6 +276,9 @@ class LeadController extends Controller
                             $contactsUp++;
                         }
                     }
+
+                    // log contact info if needed later
+                    // \Log::info("Processed contact ID {$contact->id} for lead ID {$lead->id}");
 
                     // Products + Stages
                     PRODUCTS:
@@ -319,6 +336,32 @@ class LeadController extends Controller
                             // keep processing other products/rows
                         }
                     }
+
+
+                    // --- Comments import (optional per row)
+                    $commentText = self::n(\Illuminate\Support\Arr::get($row, 'Comments'));
+                    if ($commentText) {
+                        try {
+                            // Attach to the lead; prefer linking to the contact we just upserted (if any)
+                            // contact may be null if no identifier was given and we "goto PRODUCTS"
+                            $contactId = isset($contact) && $contact ? $contact->id : null;
+
+                            \App\Models\LeadComment::create([
+                                'lead_id'    => $lead->id,
+                                'user_id' => $contactId,
+                                'comment'    => $commentText,
+                            ]);
+                            $commentsCreated++;
+                        } catch (\Throwable $e) {
+                            $skips['comments_skipped'][] = [
+                                'row_index' => $idx,
+                                'lead_id'   => $lead->id ?? null,
+                                'reason'    => $e->getMessage(),
+                            ];
+                        }
+                    }
+
+
                 } catch (\Throwable $e) {
                     $skips['row_errors'][] = [
                         'row_index'  => $idx,
@@ -337,6 +380,7 @@ class LeadController extends Controller
                 'leads_updated'     => $updated,
                 'contacts_upserted' => $contactsUp,
                 'lead_products_set' => $lpUpserts,
+                'lead_comments_created' => $commentsCreated
             ],
             // Everything that wasn’t inserted / was skipped with reasons:
             'not_inserted' => $skips,
@@ -356,6 +400,192 @@ class LeadController extends Controller
         if ($raw === null) return null;
         if (is_numeric($raw)) return (int) $raw;
         return null;
+    }
+
+
+    public function bulkCommentImporter(Request $request): JsonResponse
+    {
+        // 1) Validate basic structure
+        $validated = $request->validate([
+            'comments'                         => ['required', 'array'],
+            'comments.*.Item ID'               => ['nullable'],          // string or number
+            'comments.*.Item Name'             => ['nullable', 'string'],
+            'comments.*.User'                  => ['required', 'string'],
+            'comments.*.Update Content'        => ['required', 'string'],
+            'comments.*.Created At'            => ['required', 'string'],
+            // Other fields in the payload are ignored
+        ]);
+
+        $inserted = 0;
+
+        // Diagnostics
+        $skips = [
+            'lead_not_found'    => [], // [{row_index, item_id, item_name, reason}]
+            'user_not_found'    => [], // [{row_index, user}]
+            'date_parse_failed' => [], // [{row_index, created_at_raw}]
+            'row_errors'        => [], // [{row_index, reason}]
+        ];
+
+        DB::transaction(function () use (&$inserted, &$skips, $validated) {
+            foreach ($validated['comments'] as $idx => $row) {
+                try {
+                    // --- Extract fields (tolerant of missing keys) ---
+                    $itemId        = self::sv($row, 'Item ID');        // may be numeric or string
+                    $itemName      = self::sv($row, 'Item Name');
+                    $userName      = self::sv($row, 'User');           // required by validation
+                    $commentText   = self::sv($row, 'Update Content'); // required by validation
+                    $createdAtRaw  = self::sv($row, 'Created At');     // required by validation
+
+                    // --- Resolve lead_id ---
+                    $leadId = null;
+
+                    // Priority 1: by lead_contacts.item_id
+                    if ($itemId !== null && $itemId !== '') {
+                        $contact = \App\Models\LeadContact::query()
+                            ->where('item_id', (string)$itemId)
+                            ->first();
+                        if ($contact) {
+                            $leadId = (int)$contact->lead_id;
+                        }
+                    }
+
+                    // Fallback: by leads.lead_name = Item Name (case-insensitive)
+                    if (!$leadId && $itemName) {
+                        $lead = \App\Models\Lead::query()
+                            ->whereRaw('LOWER(lead_name) = ?', [Str::lower($itemName)])
+                            ->first();
+                        if ($lead) {
+                            $leadId = (int)$lead->id;
+                        }
+                    }
+
+                    if (!$leadId) {
+                        $skips['lead_not_found'][] = [
+                            'row_index' => $idx,
+                            'item_id'   => $itemId,
+                            'item_name' => $itemName,
+                            'reason'    => 'Could not resolve lead via LeadContact.item_id or Lead.lead_name',
+                        ];
+                        continue; // cannot insert (lead_id is NOT NULL)
+                    }
+
+                    // --- Resolve user_id by users.name (case-insensitive) ---
+                    $user = \App\Models\User::query()
+                        ->whereRaw('LOWER(name) = ?', [Str::lower($userName)])
+                        ->first();
+
+                    if (!$user) {
+                        $skips['user_not_found'][] = [
+                            'row_index' => $idx,
+                            'user'      => $userName,
+                        ];
+                        continue; // cannot insert (user_id is NOT NULL)
+                    }
+
+                    // --- Parse created_at ---
+                    $createdAt = self::parseHumanDate($createdAtRaw);
+                    if (!$createdAt) {
+                        $skips['date_parse_failed'][] = [
+                            'row_index'      => $idx,
+                            'created_at_raw' => $createdAtRaw,
+                        ];
+                        continue;
+                    }
+
+                    // --- (Optional) de-duplication guard ---
+                    // If you want to avoid duplicates, uncomment the check below:
+                    /*
+                    $exists = \App\Models\LeadComment::query()
+                        ->where('lead_id', $leadId)
+                        ->where('user_id', $user->id)
+                        ->where('comment', $commentText)
+                        ->where('created_at', $createdAt)
+                        ->exists();
+                    if ($exists) {
+                        // Already imported; skip silently or record a reason if you prefer
+                        continue;
+                    }
+                    */
+
+                    // --- Insert row ---
+                    \App\Models\LeadComment::insert([
+                        'lead_id'    => $leadId,
+                        'user_id'    => (int)$user->id,
+                        'comment'    => $commentText,
+                        'created_at' => $createdAt,    // honour source timestamp
+                        'updated_at' => $createdAt,    // keep same as created_at
+                    ]);
+
+                    $inserted++;
+                } catch (\Throwable $e) {
+                    $skips['row_errors'][] = [
+                        'row_index' => $idx,
+                        'reason'    => $e->getMessage(),
+                    ];
+                    // continue to next row
+                }
+            }
+        });
+
+        return response()->json([
+            'message' => 'Bulk comment import completed',
+            'summary' => [
+                'comments_inserted' => $inserted,
+            ],
+            'not_inserted' => $skips,
+        ], 201);
+    }
+
+    /**
+     * Safe value getter & normalizer: trims strings; returns null for empty strings.
+     */
+    private static function sv(array $row, string $key): ?string
+    {
+        if (!array_key_exists($key, $row)) return null;
+        $v = is_string($row[$key]) ? trim($row[$key]) : $row[$key];
+        if ($v === '' || $v === null) return null;
+        return is_string($v) ? $v : (string)$v;
+    }
+
+    /**
+     * Parse dates like "28/January/2025  09:09:47 PM" (extra spaces, month name).
+     * Falls back to Carbon::parse().
+     */
+    private static function parseHumanDate(?string $raw): ?string
+    {
+        if (!$raw) return null;
+
+        // Collapse multiple spaces
+        $norm = preg_replace('/\s+/', ' ', trim($raw));
+
+        // Try explicit formats (day/MonthName/Year hour:minute:second AM|PM)
+        $formats = [
+            'd/F/Y h:i:s A',     // 28/January/2025 09:09:47 PM
+            'd/F/Y h:i A',       // 28/January/2025 09:09 PM
+            'd-M-Y h:i:s A',     // 28-Jan-2025 09:09:47 PM
+            'd-m-Y h:i:s A',     // 28-01-2025 09:09:47 PM
+            'Y-m-d H:i:s',       // 2025-01-28 21:09:47
+            'Y-m-d\TH:i:s',      // ISO-ish without TZ
+        ];
+
+        foreach ($formats as $fmt) {
+            try {
+                $c = Carbon::createFromFormat($fmt, $norm, config('app.timezone') ?? 'Asia/Dhaka');
+                if ($c !== false) {
+                    return $c->toDateTimeString(); // "Y-m-d H:i:s"
+                }
+            } catch (\Throwable $e) {
+                // try next
+            }
+        }
+
+        // Last resort: free parse
+        try {
+            $c = Carbon::parse($raw, config('app.timezone') ?? 'Asia/Dhaka');
+            return $c->toDateTimeString();
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
 }

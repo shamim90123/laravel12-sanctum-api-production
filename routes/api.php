@@ -62,6 +62,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('leads', LeadController::class);
         Route::post('leads/account-manager/{lead}', [LeadController::class, 'assignAccountManager']);
         Route::post('/leads/bulk-importer',    [LeadController::class, 'bulkImporter']);
+        Route::post('/leads/bulk-comment-importer',    [LeadController::class, 'bulkCommentImporter']);
 
         // Contacts
         Route::get('leads/{lead}/contacts',             [LeadContactController::class, 'index']);

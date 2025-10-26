@@ -13,7 +13,7 @@ class LeadContact extends Model
     protected $fillable = [
     'lead_id', 'first_name', 'last_name', 'name', 'email', 'phone', 'job_title', 'department',
     'primary_status', // legacy
-    'is_primary',
+    'is_primary', 'item_id', 'link'
 ];
 
     public function lead()
