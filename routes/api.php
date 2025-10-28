@@ -85,7 +85,7 @@ Route::prefix('v1')->group(function () {
 
         // Route::apiResource('leads', LeadController::class);
 
-         Route::apiResource('leads', LeadController::class)
+        Route::apiResource('leads', LeadController::class)
         ->middlewareFor(['index','show'], 'permission:leads.view')
         ->middlewareFor('store',  'permission:leads.create')
         ->middlewareFor('update', 'permission:leads.update')
