@@ -43,7 +43,7 @@ class PermissionSeeder extends Seeder
             'roles.view','roles.create','roles.update','roles.delete',
 
             // Lookups / Dashboard
-            'stats.view','countries.view',
+            'dashboard.view',
         ];
 
 
