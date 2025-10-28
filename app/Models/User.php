@@ -2,21 +2,22 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Spatie\Permission\Traits\HasRoles;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 use App\Notifications\ResetPasswordNotification;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasApiTokens, HasRoles;
 
+    // Spatie guard to match your seeder/config
+    protected $guard_name = 'web';
+
     /**
-     * The attributes that are mass assignable.
+     * Mass assignable.
      *
      * @var list<string>
      */
@@ -26,29 +27,34 @@ class User extends Authenticatable
         'password',
     ];
 
-    protected $appends = ['primary_role'];
-
-
-    public function getPrimaryRoleAttribute()
-    {
-        return $this->roles->pluck('name')->first();
-    }
-
-
     /**
-     * The attributes that should be hidden for serialization.
+     * Hide sensitive fields from JSON.
      *
      * @var list<string>
      */
     protected $hidden = [
         'password',
         'remember_token',
+        // If you want to hide full roles relation; we expose computed lists instead
+        // 'roles',
+        // 'permissions',
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * Append computed accessors to JSON.
      *
-     * @return array<string, string>
+     * @var list<string>
+     */
+    protected $appends = [
+        'primary_role',
+        'roles_list',
+        'permissions_list',
+    ];
+
+    /**
+     * Casts.
+     *
+     * @return array<string,string>
      */
     protected function casts(): array
     {
@@ -58,10 +64,27 @@ class User extends Authenticatable
         ];
     }
 
-    // public function leadComments()
-    // {
-    //     return $this->hasMany(\App\Models\LeadComment::class);
-    // }
+    // ===== Accessors for your frontend =====
+
+    public function getPrimaryRoleAttribute(): ?string
+    {
+        // first role name or null
+        return $this->roles->pluck('name')->first();
+    }
+
+    public function getRolesListAttribute(): array
+    {
+        // ["admin","manager",...]
+        return $this->getRoleNames()->values()->all();
+    }
+
+    public function getPermissionsListAttribute(): array
+    {
+        // ["leads.view","products.update",...]
+        return $this->getAllPermissions()->pluck('name')->values()->all();
+    }
+
+    // ===== Notifications =====
 
     public function sendPasswordResetNotification($token): void
     {

@@ -1,5 +1,4 @@
 <?php
-
 // database/seeders/PermissionSeeder.php
 
 namespace Database\Seeders;
@@ -7,58 +6,59 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 class PermissionSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1) Define your permissions
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $guard = 'web';
+
         $permissions = [
             // Users
-            'users.view',
-            'users.create',
-            'users.update',
-            'users.delete',
+            'users.view','users.create','users.update','users.delete','users.assign-roles',
 
             // Leads
-            'leads.view',
-            'leads.create',
-            'leads.update',
-            'leads.delete',
+            'leads.view','leads.create','leads.update','leads.delete',
+            'leads.assign-account-manager','leads.bulk-import','leads.bulk-comment-import','leads.update-status',
+
+            // Lead Contacts
+            'lead-contacts.view','lead-contacts.upsert','lead-contacts.delete','lead-contacts.set-primary',
+
+            // Lead Comments
+            'lead-comments.view','lead-comments.create','lead-comments.update','lead-comments.delete',
+
+            // Lead Products
+            'lead-products.view','lead-products.assign','lead-products.bulk-update',
+
+            // Products
+            'products.view','products.create','products.update','products.delete','products.toggle-status',
+
+            // Sale Stages
+            'stages.view','stages.create','stages.update','stages.delete','stages.toggle-status',
+
+            // Roles (NEW)
+            'roles.view','roles.create','roles.update','roles.delete',
+
+            // Lookups / Dashboard
+            'stats.view','countries.view',
         ];
 
-        // 2) Create permissions (idempotent)
+
         foreach ($permissions as $name) {
             Permission::firstOrCreate([
                 'name'       => $name,
-                'guard_name' => 'web',   // keep guard consistent
+                'guard_name' => $guard,
             ]);
         }
 
-        // 3) Create roles (idempotent)
-        $admin   = Role::firstOrCreate(['name' => 'admin',   'guard_name' => 'web']);
-        $manager = Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web']);
-        $staff   = Role::firstOrCreate(['name' => 'staff',   'guard_name' => 'web']);
-        $viewer  = Role::firstOrCreate(['name' => 'viewer',  'guard_name' => 'web']);
+        $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => $guard]);
 
-        // 4) Assign permissions to roles
-        // Admin gets everything
-        $admin->syncPermissions(Permission::where('guard_name', 'web')->pluck('name')->all());
+        // Give admin everything
+        $admin->syncPermissions(Permission::where('guard_name', $guard)->pluck('name')->all());
 
-        // Manager gets all leads + view users
-        $manager->syncPermissions([
-            'users.view',
-            'leads.view', 'leads.create', 'leads.update', 'leads.delete',
-        ]);
-
-        // Staff can create & view leads
-        $staff->syncPermissions([
-            'leads.view', 'leads.create',
-        ]);
-
-        // Viewer can only view leads
-        $viewer->syncPermissions([
-            'leads.view',
-        ]);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }

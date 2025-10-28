@@ -45,29 +45,49 @@ class AuthController extends Controller
 
         $user = User::where('email', $data['email'])->first();
 
-        // ❌ Remove the incorrect Hash::check($plain, $plain)
         if (!$user || !Hash::check($data['password'], $user->password)) {
-            // uniform error to avoid credential probing
             throw ValidationException::withMessages([
                 'email' => ['Invalid credentials.'],
             ]);
-            // or: return response()->json(['message' => 'Invalid credentials'], 422);
         }
 
-        // optional: single-session
+        // Optional single-session policy
         $user->tokens()->delete();
 
-        $token = $user->createToken('api')->plainTextToken;
+        // If you want abilities, pass ['*'] for super token or a specific array
+        $token = $user->createToken('api', ['*'])->plainTextToken;
+
+        // Eager-load roles to avoid N+1 in accessors
+        $user->load('roles:id,name');
 
         return response()->json([
             'token' => $token,
-            'user'  => $user,
+            'user'  => [
+                'id'               => $user->id,
+                'name'             => $user->name,
+                'email'            => $user->email,
+                'primary_role'     => $user->primary_role,
+                'roles_list'       => $user->roles_list,        // ["admin", ...]
+                'permissions_list' => $user->permissions_list,  // ["leads.view", ...]
+                'created_at'       => $user->created_at,
+            ],
         ]);
     }
 
     public function me(Request $request)
     {
-        return response()->json($request->user());
+        /** @var \App\Models\User $user */
+        $user = $request->user()->load('roles:id,name');
+
+        return response()->json([
+            'id'               => $user->id,
+            'name'             => $user->name,
+            'email'            => $user->email,
+            'primary_role'     => $user->primary_role,
+            'roles_list'       => $user->roles_list,
+            'permissions_list' => $user->permissions_list,
+            'created_at'       => $user->created_at,
+        ]);
     }
 
     public function logout(Request $request)

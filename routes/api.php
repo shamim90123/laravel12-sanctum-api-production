@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\PasswordController;
+use App\Http\Controllers\Api\Leads\RoleController;
 
 /*
 |--------------------------------------------------------------------------
@@ -63,6 +64,14 @@ Route::prefix('v1')->group(function () {
     */
     Route::middleware('auth:sanctum')->group(function () {
 
+        Route::get('/permissions', [RoleController::class, 'permissionsIndex']); // flat names
+        Route::get('/roles/names', [RoleController::class, 'names']);           // plain role names
+        Route::get('/roles', [RoleController::class, 'index']);
+        Route::get('/roles/{role}', [RoleController::class, 'show']);
+        Route::post('/roles', [RoleController::class, 'store']);
+        Route::put('/roles/{role}', [RoleController::class, 'update']);
+        Route::delete('/roles/{role}', [RoleController::class, 'destroy']);
+
         // ---- Auth session ----
         Route::get('me',      [AuthController::class, 'me']);
         Route::post('logout', [AuthController::class, 'logout']);
@@ -74,7 +83,14 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('users', UserController::class);
         Route::get('user-list', [UserController::class, 'userList']);
 
-        Route::apiResource('leads', LeadController::class);
+        // Route::apiResource('leads', LeadController::class);
+
+         Route::apiResource('leads', LeadController::class)
+        ->middlewareFor(['index','show'], 'permission:leads.view')
+        ->middlewareFor('store',  'permission:leads.create')
+        ->middlewareFor('update', 'permission:leads.update')
+        ->middlewareFor('destroy','permission:leads.delete');
+
         Route::post('leads/account-manager/{lead}', [LeadController::class, 'assignAccountManager']);
         Route::post('/leads/bulk-importer',    [LeadController::class, 'bulkImporter']);
         Route::post('/leads/bulk-comment-importer',    [LeadController::class, 'bulkCommentImporter']);
