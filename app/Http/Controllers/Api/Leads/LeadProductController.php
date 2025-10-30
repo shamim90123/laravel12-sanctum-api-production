@@ -74,6 +74,14 @@ class LeadProductController extends Controller
                         'notes'               => $it['notes'] ?? null,
                     ],
                 ]);
+
+                $lead->products()->updateExistingPivot($it['product_id'], [
+                    'contact_id' => $it['contact_id'] ?? null,
+                ]);
+
+                $lead->products()->updateExistingPivot($it['product_id'], [
+                    'notes' => $it['notes'] ?? null,
+                ]);
             }
         });
 

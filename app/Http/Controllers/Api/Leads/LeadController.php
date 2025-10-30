@@ -19,61 +19,61 @@ use Carbon\Carbon;
 class LeadController extends Controller
 {
    public function index(Request $request): JsonResponse
-{
-    $q = Lead::query()
-        ->with(['destination:id,flag,name,iso_3166_2', 'accountManager:id,name'])
-        ->withCount(['contacts', 'comments as notes_count']);
+    {
+        $q = Lead::query()
+            ->with(['destination:id,flag,name,iso_3166_2', 'accountManager:id,name', 'leadProducts'])
+            ->withCount(['contacts', 'comments as notes_count']);
 
-    // ---- Existing 'q' (global search) ----
-    if ($search = $request->get('q')) {
-        $q->where(function ($s) use ($search) {
-            $s->where('lead_name', 'like', "%{$search}%")
-              ->orWhere('city', 'like', "%{$search}%");
-        });
-    }
-
-    // ---- NEW: discrete filters ----
-    if ($leadName = $request->get('lead_name')) {
-        $q->where('lead_name', 'like', "%{$leadName}%");
-    }
-    if ($city = $request->get('city')) {
-        $q->where('city', 'like', "%{$city}%");
-    }
-    // status can be 0,1,2 — ensure we accept "0"
-    if ($request->has('status')) {
-        $status = $request->get('status');
-        if ($status !== '' && $status !== null) {
-            $q->where('status', (int) $status);
-        }
-    }
-
-    // destination can be id or text; prefer id if numeric
-    if ($dest = $request->get('destination')) {
-        if (is_numeric($dest)) {
-            $q->where('destination_id', (int) $dest);
-        } else {
-            // optional: allow filtering by destination name
-            $q->whereHas('destination', function ($dq) use ($dest) {
-                $dq->where('name', 'like', "%{$dest}%")
-                   ->orWhere('iso_3166_2', 'like', "%{$dest}%");
+        // ---- Existing 'q' (global search) ----
+        if ($search = $request->get('q')) {
+            $q->where(function ($s) use ($search) {
+                $s->where('lead_name', 'like', "%{$search}%")
+                ->orWhere('city', 'like', "%{$search}%");
             });
         }
+
+        // ---- NEW: discrete filters ----
+        if ($leadName = $request->get('lead_name')) {
+            $q->where('lead_name', 'like', "%{$leadName}%");
+        }
+        if ($city = $request->get('city')) {
+            $q->where('city', 'like', "%{$city}%");
+        }
+        // status can be 0,1,2 — ensure we accept "0"
+        if ($request->has('status')) {
+            $status = $request->get('status');
+            if ($status !== '' && $status !== null) {
+                $q->where('status', (int) $status);
+            }
+        }
+
+        // destination can be id or text; prefer id if numeric
+        if ($dest = $request->get('destination')) {
+            if (is_numeric($dest)) {
+                $q->where('destination_id', (int) $dest);
+            } else {
+                // optional: allow filtering by destination name
+                $q->whereHas('destination', function ($dq) use ($dest) {
+                    $dq->where('name', 'like', "%{$dest}%")
+                    ->orWhere('iso_3166_2', 'like', "%{$dest}%");
+                });
+            }
+        }
+
+        // ---- Sorting (keep your safe list) ----
+        $sortBy    = $request->get('sort_by', 'lead_name');
+        $direction = strtolower($request->get('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
+        $sortable  = ['lead_name', 'city', 'created_at', 'contacts_count', 'notes_count'];
+        if (!in_array($sortBy, $sortable, true)) $sortBy = 'lead_name';
+
+        $perPage = (int) $request->get('per_page', 10);
+
+        $leads = $q->orderBy($sortBy, $direction)
+            ->paginate($perPage)
+            ->appends($request->query());
+
+        return response()->json($leads);
     }
-
-    // ---- Sorting (keep your safe list) ----
-    $sortBy    = $request->get('sort_by', 'lead_name');
-    $direction = strtolower($request->get('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
-    $sortable  = ['lead_name', 'city', 'created_at', 'contacts_count', 'notes_count'];
-    if (!in_array($sortBy, $sortable, true)) $sortBy = 'lead_name';
-
-    $perPage = (int) $request->get('per_page', 10);
-
-    $leads = $q->orderBy($sortBy, $direction)
-        ->paginate($perPage)
-        ->appends($request->query());
-
-    return response()->json($leads);
-}
 
 
     public function store(Request $request): JsonResponse
