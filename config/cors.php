@@ -8,7 +8,7 @@ return [
         'http://localhost:5174',
         'http://crm-backend.test:5173',   // if using a .test Vite URL
         'http://crm-backend.test',        // if serving static build on this host
-        'https://backend-api.samsglobal.co.uk'
+        'https://backend.samsglobal.co.uk'
     ],
     'allowed_origins_patterns' => [],
     'allowed_headers' => ['*'],
