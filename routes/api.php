@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\SaleStageController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\LookupController;
+use App\Http\Controllers\Api\PasswordController;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,6 +42,20 @@ Route::prefix('v1')->group(function () {
     Route::post('register', [AuthController::class, 'register']);
     Route::post('login',    [AuthController::class, 'login']);
 
+
+
+    // Public (no auth)
+    Route::post('password/forgot', [PasswordController::class, 'forgot'])
+        ->middleware('throttle:5,1'); // 5 req/min
+    Route::post('password/reset',  [PasswordController::class, 'reset'])
+        ->middleware('throttle:5,1');
+
+    // Authenticated
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('password/change', [PasswordController::class, 'change']);
+    });
+
+
     /*
     |----------------------------------------------------------------------
     | Authenticated routes
@@ -61,6 +76,10 @@ Route::prefix('v1')->group(function () {
 
         Route::apiResource('leads', LeadController::class);
         Route::post('leads/account-manager/{lead}', [LeadController::class, 'assignAccountManager']);
+        Route::post('/leads/bulk-importer',    [LeadController::class, 'bulkImporter']);
+        Route::post('/leads/bulk-comment-importer',    [LeadController::class, 'bulkCommentImporter']);
+        Route::patch('leads/{lead}/status', [LeadController::class, 'updateStatus']);
+
 
         // Contacts
         Route::get('leads/{lead}/contacts',             [LeadContactController::class, 'index']);
@@ -68,10 +87,13 @@ Route::prefix('v1')->group(function () {
         Route::delete('contacts/{contact}',             [LeadContactController::class, 'destroy']);
         Route::post('contacts/{contact}/primary',       [LeadContactController::class, 'setPrimary']);
 
+
         // Comments
         Route::get('leads/{lead}/comments',              [LeadCommentController::class, 'index']);
         Route::post('leads/{lead}/comments',             [LeadCommentController::class, 'store']);
         Route::delete('leads/{lead}/comments/{comment}', [LeadCommentController::class, 'destroy']);
+        Route::match(['patch', 'put'], 'leads/{lead}/comments/{comment}', [LeadCommentController::class, 'update']);
+
 
         // Lead ↔ Products
         Route::get('leads/{lead}/products',            [LeadProductController::class, 'index']);
@@ -90,6 +112,7 @@ Route::prefix('v1')->group(function () {
         Route::put('products/{id}',            [ProductController::class, 'update']);
         Route::patch('products/{id}/status',   [ProductController::class, 'toggleStatus']);
         Route::delete('products/{id}',         [ProductController::class, 'destroy']);
+
 
         // ---- Lead Stages ----
         Route::get('lead_stages',                 [SaleStageController::class, 'index']);
