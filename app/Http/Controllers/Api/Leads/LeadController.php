@@ -200,7 +200,7 @@ class LeadController extends Controller
                     $city     = self::n(\Illuminate\Support\Arr::get($row, 'City'));
                     $destRaw  = \Illuminate\Support\Arr::get($row, 'Destination');
 
-                    $destinationId = self::resolveDestinationId($destRaw) ?? 826;
+                    $destinationId = self::resolveDestinationId($destRaw) ?? null;
 
                     if ($leadName === '') {
                         $skips['leads_skipped_for_blank_name'][] = [
