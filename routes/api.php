@@ -17,6 +17,8 @@ use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\PasswordController;
 use App\Http\Controllers\Api\Leads\RoleController;
 use App\Http\Controllers\Api\DemoBookController;
+use App\Http\Controllers\Api\PermissionController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -64,6 +66,16 @@ Route::prefix('v1')->group(function () {
     |----------------------------------------------------------------------
     */
     Route::middleware('auth:sanctum')->group(function () {
+
+        Route::get('/permissions-list', [PermissionController::class, 'index']);
+        Route::get('/permissions/{id}', [PermissionController::class, 'show']);
+        Route::post('/permissions', [PermissionController::class, 'store']);
+        Route::put('/permissions/{id}', [PermissionController::class, 'update']);
+        Route::delete('/permissions/{id}', [PermissionController::class, 'destroy']);
+
+        // Additional permission routes
+        Route::get('permissions-grouped', [PermissionController::class, 'grouped']);
+        Route::post('roles/{role}/permissions', [PermissionController::class, 'syncToRole']);
 
         Route::get('/permissions', [RoleController::class, 'permissionsIndex']); // flat names
         Route::get('/roles/names', [RoleController::class, 'names']);           // plain role names
