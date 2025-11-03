@@ -74,6 +74,7 @@ Route::prefix('v1')->group(function () {
         // ---- Users ----
         Route::apiResource('users', UserController::class);
         Route::get('user-list', [UserController::class, 'userList']);
+        Route::post('users/{user}', [UserController::class, 'update']); // Add this for file uploads
 
         Route::apiResource('leads', LeadController::class);
         Route::post('leads/account-manager/{lead}', [LeadController::class, 'assignAccountManager']);
@@ -113,6 +114,7 @@ Route::prefix('v1')->group(function () {
         Route::put('products/{id}',            [ProductController::class, 'update']);
         Route::patch('products/{id}/status',   [ProductController::class, 'toggleStatus']);
         Route::delete('products/{id}',         [ProductController::class, 'destroy']);
+        Route::post('products/{id}', [ProductController::class, 'update']); // Add this
 
 
         // ---- Lead Stages ----
