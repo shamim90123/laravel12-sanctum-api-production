@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\PasswordController;
 use App\Http\Controllers\Api\Leads\RoleController;
+use App\Http\Controllers\Api\DemoBookController;
 
 /*
 |--------------------------------------------------------------------------
@@ -137,5 +138,14 @@ Route::prefix('v1')->group(function () {
         Route::put('lead_stages/{id}',            [SaleStageController::class, 'update']);
         Route::patch('lead_stages/{id}/status',   [SaleStageController::class, 'toggleStatus']);
         Route::delete('lead_stages/{id}',         [SaleStageController::class, 'destroy']);
+
+        // ---- demo book ----
+        Route::get('demo_books',                 [DemoBookController::class, 'index']);
+        Route::post('demo_books',                [DemoBookController::class, 'store']);
+        Route::get('demo_books/{id}',            [DemoBookController::class, 'show']);
+        Route::put('demo_books/{id}',            [DemoBookController::class, 'update']);
+        Route::patch('demo_books/{id}/status',   [DemoBookController::class, 'toggleStatus']);
+        Route::delete('demo_books/{id}',         [DemoBookController::class, 'destroy']);
+
     });
 });
