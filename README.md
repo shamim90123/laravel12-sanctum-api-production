@@ -32,13 +32,13 @@ Ensure the following are installed on your system:
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/shamim90123/laravel12-sanctum-api-production.git
 ````
 
 ### 2. Navigate to the project directory
 
 ```bash
-cd <backend-directory>
+cd laravel12-sanctum-api-production
 ```
 
 ### 3. Install PHP dependencies
