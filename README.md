@@ -191,19 +191,3 @@ This project is licensed under the **MIT License**.
 **Shamim Reza**
 Full-Stack Developer
 Laravel • Vue • React • Next.js • Python
-
-Focused on building **secure, scalable, production-grade systems**.
-
-```
-
----
-
-If you want next:
-- ✅ **Postman collection JSON**
-- ✅ **Swagger / OpenAPI docs**
-- ✅ **Docker setup**
-- ✅ **CI/CD pipeline**
-- ✅ **Security checklist before release**
-
-Just say 👍
-```
